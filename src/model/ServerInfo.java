@@ -1,4 +1,4 @@
-import model.Protocol;
+package model;
 
 import java.util.Objects;
 
@@ -11,7 +11,7 @@ public class ServerInfo {
     public ServerInfo(String address, int port) {
         this.address = address;
         this.port = port;
-        this.protocol = Protocol.TCP; // domyślnie TCP
+        this.protocol = Protocol.TCP;
     }
 
     public ServerInfo(String address, int port, Protocol protocol) {
