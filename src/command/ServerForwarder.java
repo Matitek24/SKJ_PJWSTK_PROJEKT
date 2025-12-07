@@ -12,198 +12,71 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 
-/**
- * Klasa odpowiedzialna za przekazywanie komend do serwerów (TCP i UDP)
- */
 public class ServerForwarder {
-    private static final int CONNECTION_TIMEOUT = 2000; // 2 sekundy
+    private static final int CONNECTION_TIMEOUT = 2000;
     private static final int MAX_UDP_PACKET_SIZE = 65535;
 
-    /**
-     * Przekazuje komendę do serwera i zwraca odpowiedź
-     * Automatycznie wybiera TCP lub UDP w zależności od typu serwera
-     */
     public String forwardToServer(ServerInfo server, String command) {
         System.out.println("      → Forwarding to " + server);
-
-        String response;
         if (server.getProtocol() == Protocol.TCP) {
-            response = forwardTCP(server, command);
+            return forwardTCP(server, command);
         } else {
-            response = forwardUDP(server, command);
+            return forwardUDP(server, command);
         }
-
-        System.out.println("      ← Server response: " + response);
-        return response;
     }
 
-    /**
-     * Przekazuje komendę do serwera TCP
-     */
     private String forwardTCP(ServerInfo server, String command) {
-        Socket socket = null;
-
-        try {
-            socket = new Socket();
-            socket.connect(
-                    new InetSocketAddress(server.getAddress(), server.getPort()),
-                    CONNECTION_TIMEOUT
-            );
-
-            BufferedReader in = new BufferedReader(
-                    new InputStreamReader(socket.getInputStream())
-            );
+        try (Socket socket = new Socket()) {
+            socket.connect(new InetSocketAddress(server.getAddress(), server.getPort()), CONNECTION_TIMEOUT);
             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+            BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
-            // Wyślij komendę
             out.println(command);
-
-            // Odbierz odpowiedź
             String response = in.readLine();
-
+            System.out.println("      ← Server response: " + response);
             return response != null ? response : "NA";
-
         } catch (Exception e) {
-            System.err.println("Error forwarding TCP to " + server + ": " + e.getMessage());
+            System.err.println("Error TCP: " + e.getMessage());
             return "NA";
-
-        } finally {
-            if (socket != null) {
-                try {
-                    socket.close();
-                } catch (Exception e) {
-                    // Ignoruj błędy zamykania
-                }
-            }
         }
     }
 
-    /**
-     * Przekazuje komendę do serwera UDP
-     */
     private String forwardUDP(ServerInfo server, String command) {
-        DatagramSocket socket = null;
-
-        try {
-            socket = new DatagramSocket();
+        try (DatagramSocket socket = new DatagramSocket()) {
             socket.setSoTimeout(CONNECTION_TIMEOUT);
 
-            // Przygotuj dane do wysłania
-            byte[] sendData = command.getBytes();
+            // WAŻNE: Dodajemy spację/enter na końcu, bo Scanner na serwerze tego wymaga
+            byte[] sendData = (command + "\n").getBytes();
             InetAddress address = InetAddress.getByName(server.getAddress());
 
-            DatagramPacket sendPacket = new DatagramPacket(
-                    sendData,
-                    sendData.length,
-                    address,
-                    server.getPort()
-            );
-
-            // Wyślij
+            DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, address, server.getPort());
             socket.send(sendPacket);
 
-            // Odbierz odpowiedź
             byte[] receiveData = new byte[MAX_UDP_PACKET_SIZE];
-            DatagramPacket receivePacket = new DatagramPacket(
-                    receiveData,
-                    receiveData.length
-            );
-
+            DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
             socket.receive(receivePacket);
 
-            String response = new String(
-                    receivePacket.getData(),
-                    0,
-                    receivePacket.getLength()
-            ).trim();
-
+            String response = new String(receivePacket.getData(), 0, receivePacket.getLength()).trim();
+            System.out.println("      ← Server response: " + response);
             return response;
-
         } catch (Exception e) {
-            System.err.println("Error forwarding UDP to " + server + ": " + e.getMessage());
+            System.err.println("Error UDP: " + e.getMessage());
             return "NA";
-
-        } finally {
-            if (socket != null && !socket.isClosed()) {
-                socket.close();
-            }
         }
     }
 
-    /**
-     * Wysyła komendę do serwera bez oczekiwania na odpowiedź
-     * (używane dla QUIT)
-     */
     public void sendWithoutResponse(ServerInfo server, String command) {
         if (server.getProtocol() == Protocol.TCP) {
-            sendTCPWithoutResponse(server, command);
+            try (Socket socket = new Socket()) {
+                socket.connect(new InetSocketAddress(server.getAddress(), server.getPort()), CONNECTION_TIMEOUT);
+                new PrintWriter(socket.getOutputStream(), true).println(command);
+            } catch (Exception ignored) {}
         } else {
-            sendUDPWithoutResponse(server, command);
-        }
-    }
-
-    /**
-     * Wysyła komendę TCP bez odpowiedzi
-     */
-    private void sendTCPWithoutResponse(ServerInfo server, String command) {
-        Socket socket = null;
-
-        try {
-            socket = new Socket();
-            socket.connect(
-                    new InetSocketAddress(server.getAddress(), server.getPort()),
-                    CONNECTION_TIMEOUT
-            );
-
-            PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-            out.println(command);
-
-            System.out.println("Sent '" + command + "' to " + server);
-
-        } catch (Exception e) {
-            System.err.println("Error sending TCP to " + server + ": " + e.getMessage());
-
-        } finally {
-            if (socket != null) {
-                try {
-                    socket.close();
-                } catch (Exception e) {
-                    // Ignoruj błędy zamykania
-                }
-            }
-        }
-    }
-
-    /**
-     * Wysyła komendę UDP bez odpowiedzi
-     */
-    private void sendUDPWithoutResponse(ServerInfo server, String command) {
-        DatagramSocket socket = null;
-
-        try {
-            socket = new DatagramSocket();
-
-            byte[] sendData = command.getBytes();
-            InetAddress address = InetAddress.getByName(server.getAddress());
-
-            DatagramPacket packet = new DatagramPacket(
-                    sendData,
-                    sendData.length,
-                    address,
-                    server.getPort()
-            );
-
-            socket.send(packet);
-
-            System.out.println("Sent '" + command + "' to " + server);
-
-        } catch (Exception e) {
-            System.err.println("Error sending UDP to " + server + ": " + e.getMessage());
-
-        } finally {
-            if (socket != null && !socket.isClosed()) {
-                socket.close();
-            }
+            try (DatagramSocket socket = new DatagramSocket()) {
+                byte[] sendData = (command + "\n").getBytes(); // Tu też dodajemy \n
+                InetAddress address = InetAddress.getByName(server.getAddress());
+                socket.send(new DatagramPacket(sendData, sendData.length, address, server.getPort()));
+            } catch (Exception ignored) {}
         }
     }
 }
