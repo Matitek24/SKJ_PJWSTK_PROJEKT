@@ -2,81 +2,81 @@ package command;
 
 import model.Protocol;
 import model.ServerInfo;
-
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.Socket;
+import java.io.*;
+import java.net.*;
 
 public class ServerForwarder {
-    private static final int CONNECTION_TIMEOUT = 2000;
-    private static final int MAX_UDP_PACKET_SIZE = 65535;
+    private static final int TIMEOUT = 2000;
+    private static final int BUFFER_SIZE = 65535;
 
+    // Główna metoda publiczna - czysta logika biznesowa
     public String forwardToServer(ServerInfo server, String command) {
         System.out.println("      → Forwarding to " + server);
-        if (server.getProtocol() == Protocol.TCP) {
-            return forwardTCP(server, command);
-        } else {
-            return forwardUDP(server, command);
-        }
-    }
-
-    private String forwardTCP(ServerInfo server, String command) {
-        try (Socket socket = new Socket()) {
-            socket.connect(new InetSocketAddress(server.getAddress(), server.getPort()), CONNECTION_TIMEOUT);
-            PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-            BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-
-            out.println(command);
-            String response = in.readLine();
-            System.out.println("      ← Server response: " + response);
-            return response != null ? response : "NA";
-        } catch (Exception e) {
-            System.err.println("Error TCP: " + e.getMessage());
+        try {
+            if (server.getProtocol() == Protocol.TCP) {
+                return sendTCP(server, command, true);
+            } else {
+                return sendUDP(server, command, true);
+            }
+        } catch (IOException e) {
+            System.err.println("Communication error with " + server + ": " + e.getMessage());
             return "NA";
         }
     }
 
-    private String forwardUDP(ServerInfo server, String command) {
-        try (DatagramSocket socket = new DatagramSocket()) {
-            socket.setSoTimeout(CONNECTION_TIMEOUT);
+    // Metoda dla QUIT (bez czekania na odpowiedź)
+    public void sendWithoutResponse(ServerInfo server, String command) {
+        try {
+            if (server.getProtocol() == Protocol.TCP) {
+                sendTCP(server, command, false);
+            } else {
+                sendUDP(server, command, false);
+            }
+        } catch (IOException ignored) {
+            // Przy QUIT ignorujemy błędy, bo serwer i tak się zamyka
+        }
+    }
 
-            // WAŻNE: Dodajemy spację/enter na końcu, bo Scanner na serwerze tego wymaga
+    // --- Metody pomocnicze (ukrywają brudną robotę z gniazdami) ---
+
+    private String sendTCP(ServerInfo server, String command, boolean waitForResponse) throws IOException {
+        try (Socket socket = new Socket()) {
+            socket.connect(new InetSocketAddress(server.getAddress(), server.getPort()), TIMEOUT);
+            socket.setSoTimeout(TIMEOUT);
+
+            PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+            out.println(command); // PrintWriter sam dodaje nową linię
+
+            if (waitForResponse) {
+                BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                String response = in.readLine();
+                System.out.println("      ← Server response: " + response);
+                return response != null ? response : "NA";
+            }
+            return null;
+        }
+    }
+
+    private String sendUDP(ServerInfo server, String command, boolean waitForResponse) throws IOException {
+        try (DatagramSocket socket = new DatagramSocket()) {
+            socket.setSoTimeout(TIMEOUT);
+
             byte[] sendData = (command + "\n").getBytes();
             InetAddress address = InetAddress.getByName(server.getAddress());
 
             DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, address, server.getPort());
             socket.send(sendPacket);
 
-            byte[] receiveData = new byte[MAX_UDP_PACKET_SIZE];
-            DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
-            socket.receive(receivePacket);
+            if (waitForResponse) {
+                byte[] receiveData = new byte[BUFFER_SIZE];
+                DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
+                socket.receive(receivePacket);
 
-            String response = new String(receivePacket.getData(), 0, receivePacket.getLength()).trim();
-            System.out.println("      ← Server response: " + response);
-            return response;
-        } catch (Exception e) {
-            System.err.println("Error UDP: " + e.getMessage());
-            return "NA";
-        }
-    }
-
-    public void sendWithoutResponse(ServerInfo server, String command) {
-        if (server.getProtocol() == Protocol.TCP) {
-            try (Socket socket = new Socket()) {
-                socket.connect(new InetSocketAddress(server.getAddress(), server.getPort()), CONNECTION_TIMEOUT);
-                new PrintWriter(socket.getOutputStream(), true).println(command);
-            } catch (Exception ignored) {}
-        } else {
-            try (DatagramSocket socket = new DatagramSocket()) {
-                byte[] sendData = (command + "\n").getBytes(); // Tu też dodajemy \n
-                InetAddress address = InetAddress.getByName(server.getAddress());
-                socket.send(new DatagramPacket(sendData, sendData.length, address, server.getPort()));
-            } catch (Exception ignored) {}
+                String response = new String(receivePacket.getData(), 0, receivePacket.getLength()).trim();
+                System.out.println("      ← Server response: " + response);
+                return response;
+            }
+            return null;
         }
     }
 }
