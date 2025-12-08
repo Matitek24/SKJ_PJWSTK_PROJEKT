@@ -25,13 +25,11 @@ public class ProxyConfig {
         return new ArrayList<>(servers);
     }
 
-    /**
-     * Parsuje argumenty linii komend i tworzy obiekt konfiguracji
-     */
+
     public static ProxyConfig parseArguments(String[] args) throws IllegalArgumentException {
         if (args.length < 4) {
             throw new IllegalArgumentException(
-                    "Usage: java Proxy -port <port> -server <address> <port> ..."
+                    "java Proxy -port <port> -server <address> <port> ....."
             );
         }
 
@@ -41,40 +39,40 @@ public class ProxyConfig {
         for (int i = 0; i < args.length; i++) {
             if (args[i].equals("-port")) {
                 if (i + 1 >= args.length) {
-                    throw new IllegalArgumentException("Missing port number after -port");
+                    throw new IllegalArgumentException("brakuje portu -port");
                 }
                 try {
                     proxyPort = Integer.parseInt(args[++i]);
                     if (proxyPort < 1 || proxyPort > 65535) {
-                        throw new IllegalArgumentException("Port must be between 1 and 65535");
+                        throw new IllegalArgumentException("port musi byc między 1 a 65535");
                     }
                 } catch (NumberFormatException e) {
-                    throw new IllegalArgumentException("Invalid port number: " + args[i]);
+                    throw new IllegalArgumentException("zły port: " + args[i]);
                 }
 
             } else if (args[i].equals("-server")) {
                 if (i + 2 >= args.length) {
-                    throw new IllegalArgumentException("Missing address or port after -server");
+                    throw new IllegalArgumentException("brakuje adresu albo portu po -server");
                 }
                 String address = args[++i];
                 try {
                     int port = Integer.parseInt(args[++i]);
                     if (port < 1 || port > 65535) {
-                        throw new IllegalArgumentException("Server port must be between 1 and 65535");
+                        throw new IllegalArgumentException("port serwera musi byc międy 1 a 65535");
                     }
                     servers.add(new ServerInfo(address, port));
                 } catch (NumberFormatException e) {
-                    throw new IllegalArgumentException("Invalid server port: " + args[i]);
+                    throw new IllegalArgumentException("niepoprawny port serwera: " + args[i]);
                 }
             }
         }
 
         if (proxyPort == -1) {
-            throw new IllegalArgumentException("Missing -port parameter");
+            throw new IllegalArgumentException("brakuje parametru -port");
         }
 
         if (servers.isEmpty()) {
-            throw new IllegalArgumentException("At least one -server parameter is required");
+            throw new IllegalArgumentException("Wymagamy conajmniej jednego parametru");
         }
 
         return new ProxyConfig(proxyPort, servers);

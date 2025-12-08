@@ -33,38 +33,38 @@ public class KeyDiscovery {
     }
 
     public void discoverKeys(List<ServerInfo> servers) {
-        System.out.println("\n=== Discovering keys from servers ===");
-        System.out.println("Checking " + servers.size() + " servers...");
+        System.out.println("\n=== Odkrywanie kluczy ===");
+        System.out.println("Sprawdza " + servers.size() + " serwerów...");
         System.out.println();
 
         for (ServerInfo server : servers) {
             try {
-                System.out.println("Checking server: " + server);
+                System.out.println("Sprawdza server: " + server);
                 detectProtocol(server);
                 discoverKeysFromServer(server);
                 System.out.println();
             } catch (Exception e) {
-                System.err.println("Error discovering keys from " + server + ": " + e.getMessage());
+                System.err.println("Error z " + server + ": " + e.getMessage());
             }
         }
 
-        System.out.println("=== Discovery complete ===");
-        System.out.println("Total keys discovered: " + allKeys.size());
-        System.out.println("Keys: " + allKeys);
+        System.out.println("=== Zakończone ===");
+        System.out.println("Ilosc kluczy które znalazłem: " + allKeys.size());
+        System.out.println("Klucze: " + allKeys);
         System.out.println();
     }
 
     private void detectProtocol(ServerInfo server) {
-        System.out.print("  Detecting protocol... ");
+        System.out.print("  Sprawdzanie protokołów... ");
 
         if (tryTCP(server)) {
             server.setProtocol(Protocol.TCP);
-            System.out.println("TCP detected");
+            System.out.println("TCP Odkryty");
         } else if (tryUDP(server)) {
             server.setProtocol(Protocol.UDP);
-            System.out.println("UDP detected");
+            System.out.println("UDP Odkryty");
         } else {
-            System.out.println("FAILED - no response, defaulting to TCP");
+            System.out.println("FAILED");
             server.setProtocol(Protocol.TCP);
         }
     }
@@ -75,7 +75,7 @@ public class KeyDiscovery {
             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
-            out.println("GET NAMES"); // TCP potrzebuje nowej linii
+            out.println("GET NAMES");
             socket.setSoTimeout(500);
             String response = in.readLine();
             return response != null && response.startsWith("OK");
@@ -88,7 +88,6 @@ public class KeyDiscovery {
         try (DatagramSocket socket = new DatagramSocket()) {
             socket.setSoTimeout(500);
 
-            // WAŻNE: Dodajemy spację/enter, żeby Scanner na serwerze "złapał" koniec tokena
             byte[] sendData = "GET NAMES\n".getBytes();
             InetAddress address = InetAddress.getByName(server.getAddress());
 
@@ -134,7 +133,6 @@ public class KeyDiscovery {
         try (DatagramSocket socket = new DatagramSocket()) {
             socket.setSoTimeout(CONNECTION_TIMEOUT);
 
-            // WAŻNE: Dodanie nowej linii/spacji
             byte[] sendData = "GET NAMES\n".getBytes();
             InetAddress address = InetAddress.getByName(server.getAddress());
 
@@ -146,7 +144,7 @@ public class KeyDiscovery {
             socket.receive(receivePacket);
 
             String response = new String(receivePacket.getData(), 0, receivePacket.getLength()).trim();
-            System.out.println("  Response: " + response);
+            System.out.println("  Odpowiedz: " + response);
             parseKeysResponse(response, server);
         }
     }
@@ -162,10 +160,10 @@ public class KeyDiscovery {
                 String key = parts[i];
                 keyToServer.put(key, server);
                 allKeys.add(key);
-                System.out.println("  -> Key '" + key + "' is on " + server);
+                System.out.println("  -> Klucz '" + key + "' na sewerze: " + server);
             }
         } catch (NumberFormatException e) {
-            System.err.println("Invalid key count: " + response);
+            System.err.println("Zła ilosc kluczy: " + response);
         }
     }
 

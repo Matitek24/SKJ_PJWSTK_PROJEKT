@@ -6,9 +6,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 
-/**
- * Klasa obsługująca żądanie od klienta UDP
- */
+
 public class UDPClientHandler implements Runnable {
     private static final int MAX_PACKET_SIZE = 65535;
 
@@ -29,16 +27,14 @@ public class UDPClientHandler implements Runnable {
         try {
             handleClient();
         } catch (Exception e) {
-            System.err.println("Error handling UDP client: " + e.getMessage());
+            System.err.println("Error: " + e.getMessage());
             e.printStackTrace();
         }
     }
 
-    /**
-     * Obsługuje żądanie UDP od klienta
-     */
+
     private void handleClient() throws Exception {
-        // Pobierz dane z pakietu
+
         String command = new String(
                 receivedPacket.getData(),
                 0,
@@ -48,21 +44,17 @@ public class UDPClientHandler implements Runnable {
         InetAddress clientAddress = receivedPacket.getAddress();
         int clientPort = receivedPacket.getPort();
 
-        System.out.println("      Command: " + command);
+        System.out.println("      Komenda: " + command);
 
-        // Przetwórz komendę
         String response = commandProcessor.processCommand(command);
 
-        // Wyślij odpowiedź (jeśli jest)
         if (response != null && !response.isEmpty()) {
-            System.out.println("      Response: " + response);
+            System.out.println("      Odpowiedz: " + response);
             sendResponse(response, clientAddress, clientPort);
         }
     }
 
-    /**
-     * Wysyła odpowiedź do klienta UDP
-     */
+
     private void sendResponse(String response, InetAddress address, int port)
             throws Exception {
         byte[] responseData = response.getBytes();

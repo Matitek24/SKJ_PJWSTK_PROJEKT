@@ -6,9 +6,7 @@ import model.ServerInfo;
 import java.util.List;
 import java.util.Set;
 
-/**
- * Klasa odpowiedzialna za przetwarzanie komend od klientów
- */
+
 public class CommandProcessor {
     private final KeyDiscovery keyDiscovery;
     private final ServerForwarder serverForwarder;
@@ -20,9 +18,7 @@ public class CommandProcessor {
         this.servers = servers;
     }
 
-    /**
-     * Przetwarza komendę od klienta i zwraca odpowiedź
-     */
+
     public String processCommand(String command) {
         if (command == null || command.trim().isEmpty()) {
             return "NA";
@@ -47,9 +43,7 @@ public class CommandProcessor {
         }
     }
 
-    /**
-     * Obsługuje komendy GET (NAMES lub VALUE)
-     */
+
     private String handleGet(String[] parts) {
         if (parts.length < 2) {
             return "NA";
@@ -65,9 +59,6 @@ public class CommandProcessor {
         return "NA";
     }
 
-    /**
-     * Obsługuje GET NAMES - zwraca wszystkie klucze
-     */
     private String handleGetNames() {
         Set<String> allKeys = keyDiscovery.getAllKeys();
 
@@ -85,23 +76,18 @@ public class CommandProcessor {
         return sb.toString();
     }
 
-    /**
-     * Obsługuje GET VALUE - przekazuje do odpowiedniego serwera
-     */
+
     private String handleGetValue(String key) {
         ServerInfo server = keyDiscovery.getServerForKey(key);
 
         if (server == null) {
-            return "NA"; // Klucz nieznany
+            return "NA";
         }
 
-        // Przekaż żądanie do serwera
         return serverForwarder.forwardToServer(server, "GET VALUE " + key);
     }
 
-    /**
-     * Obsługuje SET - przekazuje do odpowiedniego serwera
-     */
+
     private String handleSet(String[] parts) {
         if (parts.length < 3) {
             return "NA";
@@ -113,29 +99,24 @@ public class CommandProcessor {
         ServerInfo server = keyDiscovery.getServerForKey(key);
 
         if (server == null) {
-            return "NA"; // Klucz nieznany
+            return "NA";
         }
 
-        // Przekaż żądanie do serwera
         return serverForwarder.forwardToServer(server, "SET " + key + " " + value);
     }
 
-    /**
-     * Obsługuje QUIT - wysyła QUIT do wszystkich serwerów
-     */
     private void handleQuit() {
-        System.out.println("\n=== Shutting down - sending QUIT to all servers ===");
+        System.out.println("\n=== KONIEC QUIT ===");
 
         for (ServerInfo server : servers) {
             serverForwarder.sendWithoutResponse(server, "QUIT");
         }
 
-        System.out.println("Proxy shutting down...");
+        System.out.println("Proxy kończy pracę...");
 
-        // Uruchom zamykanie w osobnym wątku z opóźnieniem
         new Thread(() -> {
             try {
-                Thread.sleep(1000); // Daj czas na wysłanie odpowiedzi do klienta
+                Thread.sleep(1000);
                 System.exit(0);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();

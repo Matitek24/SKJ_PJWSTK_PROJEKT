@@ -8,9 +8,7 @@ import java.net.Socket;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/**
- * Klasa nasłuchująca połączeń TCP od klientów
- */
+
 public class TCPListener implements Runnable {
     private final int port;
     private final CommandProcessor commandProcessor;
@@ -30,40 +28,35 @@ public class TCPListener implements Runnable {
         try {
             startListening();
         } catch (IOException e) {
-            System.err.println("Error in TCP listener: " + e.getMessage());
+            System.err.println("Error w TCP Listener: " + e.getMessage());
             e.printStackTrace();
         }
     }
 
-    /**
-     * Rozpoczyna nasłuchiwanie na połączenia TCP
-     */
+
     private void startListening() throws IOException {
         serverSocket = new ServerSocket(port);
         running = true;
 
-        System.out.println("  ✓ TCP Listener ready");
+        System.out.println(" + TCP Listener ready");
 
         while (running) {
             try {
                 Socket clientSocket = serverSocket.accept();
                 System.out.println("[TCP] Client: " + clientSocket.getRemoteSocketAddress());
 
-                // Obsłuż klienta w osobnym wątku
                 ClientHandler handler = new ClientHandler(clientSocket, commandProcessor);
                 executorService.submit(handler);
 
             } catch (IOException e) {
                 if (running) {
-                    System.err.println("Error accepting client connection: " + e.getMessage());
+                    System.err.println("Error: " + e.getMessage());
                 }
             }
         }
     }
 
-    /**
-     * Zatrzymuje nasłuchiwanie
-     */
+
     public void stop() {
         running = false;
 
@@ -72,7 +65,7 @@ public class TCPListener implements Runnable {
                 serverSocket.close();
             }
         } catch (IOException e) {
-            System.err.println("Error closing server socket: " + e.getMessage());
+            System.err.println("Error zamknięty socket: " + e.getMessage());
         }
 
         executorService.shutdown();

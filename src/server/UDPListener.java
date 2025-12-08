@@ -8,9 +8,7 @@ import java.net.DatagramSocket;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/**
- * Klasa nasłuchująca połączeń UDP od klientów
- */
+
 public class UDPListener implements Runnable {
     private static final int MAX_PACKET_SIZE = 65535;
 
@@ -32,32 +30,27 @@ public class UDPListener implements Runnable {
         try {
             startListening();
         } catch (IOException e) {
-            System.err.println("Error in UDP listener: " + e.getMessage());
+            System.err.println("Error: " + e.getMessage());
             e.printStackTrace();
         }
     }
 
-    /**
-     * Rozpoczyna nasłuchiwanie na datagramy UDP
-     */
+
     private void startListening() throws IOException {
         socket = new DatagramSocket(port);
         running = true;
 
-        System.out.println("  ✓ UDP Listener ready");
+        System.out.println(" + UDP Listener ready");
 
         while (running) {
             try {
-                // Przygotuj bufor na datagram
+
                 byte[] buffer = new byte[MAX_PACKET_SIZE];
                 DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
 
-                // Odbierz datagram
                 socket.receive(packet);
-
                 System.out.println("[UDP] Client: " + packet.getAddress() + ":" + packet.getPort());
 
-                // Obsłuż w osobnym wątku
                 UDPClientHandler handler = new UDPClientHandler(
                         packet,
                         socket,
@@ -67,15 +60,13 @@ public class UDPListener implements Runnable {
 
             } catch (IOException e) {
                 if (running) {
-                    System.err.println("Error receiving UDP packet: " + e.getMessage());
+                    System.err.println("Error Odebrania UDP pakietu: " + e.getMessage());
                 }
             }
         }
     }
 
-    /**
-     * Zatrzymuje nasłuchiwanie
-     */
+
     public void stop() {
         running = false;
 
